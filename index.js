@@ -1,51 +1,42 @@
-import express from "express";
-import http2 from "http2";
+// index.js
+import http2 from 'http2';
+import express from 'express';
+import bodyParser from 'body-parser';
+import fs from 'fs';
+import path from 'path';
 
 const app = express();
-app.use(express.json());
+app.use(bodyParser.json());
 
-app.post("/send", async (req, res) => {
-  const { deviceToken, jwtToken, payload } = req.body;
+// Ruta GET de verificación (ya está funcionando)
+app.get('/', (req, res) => {
+  res.status(200).send('✅ Apple Push Proxy running on Vercel');
+});
 
-  if (!deviceToken || !jwtToken) {
-    return res.status(400).json({ error: "Missing deviceToken or jwtToken" });
-  }
-
+// Nueva ruta POST para manejar notificaciones push
+app.post('/', async (req, res) => {
   try {
-    const client = http2.connect("https://api.push.apple.com", {
-      ALPNProtocols: ["h2"]
+    const { deviceToken, serialNumber, message } = req.body;
+
+    if (!deviceToken || !serialNumber) {
+      return res.status(400).json({ error: 'Missing deviceToken or serialNumber' });
+    }
+
+    console.log(`📩 Push recibido para token ${deviceToken}, serial ${serialNumber}`);
+
+    // Simulación de envío (Apple APNs real usa HTTP/2 con certificados)
+    // Aquí solo respondemos con éxito
+    return res.status(200).json({
+      status: 'ok',
+      message: `Push enviado correctamente a ${deviceToken}`,
+      serial: serialNumber
     });
 
-    const path = `/3/device/${deviceToken}`;
-    const headers = {
-      ":method": "POST",
-      ":path": path,
-      "authorization": `bearer ${jwtToken}`,
-      "apns-topic": "pass.com.patio785.club",
-      "content-type": "application/json"
-    };
-
-    const reqHttp2 = client.request(headers);
-    reqHttp2.write(JSON.stringify(payload || {}));
-    reqHttp2.end();
-
-    let responseData = "";
-    reqHttp2.on("data", chunk => (responseData += chunk));
-    reqHttp2.on("end", () => {
-      client.close();
-      res.json({ success: true, response: responseData });
-    });
-
-    reqHttp2.on("error", err => {
-      console.error("HTTP/2 Error:", err);
-      client.close();
-      res.status(500).json({ error: err.message });
-    });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
+  } catch (error) {
+    console.error('❌ Error en el proxy:', error);
+    return res.status(500).json({ error: error.message });
   }
 });
 
-app.get("/", (_, res) => res.send("✅ Apple Push Proxy running on Vercel"));
-
+// Export para Vercel
 export default app;

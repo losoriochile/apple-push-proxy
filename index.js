@@ -63,5 +63,12 @@ app.post("/", async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-
+app.get("/debug", (req, res) => {
+  res.json({
+    team: process.env.APPLE_TEAM_ID,
+    key: process.env.APPLE_KEY_ID,
+    pass: process.env.APPLE_PASS_TYPE_ID,
+    hasKey: !!process.env.APPLE_AUTH_KEY_BASE64,
+  });
+});
 export default app;
